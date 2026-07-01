@@ -21,6 +21,7 @@ _TYPE_MAP: dict[str, str] = {
     "INT4": "integer",
     "INT8": "integer",
     "UNSIGNED BIG INT": "integer",
+    "YEAR": "integer",
     # Real / float family
     "REAL": "real",
     "FLOAT": "real",
@@ -32,6 +33,9 @@ _TYPE_MAP: dict[str, str] = {
     "NUMBER": "numeric",
     # Text family
     "TEXT": "text",
+    "TINYTEXT": "text",
+    "MEDIUMTEXT": "text",
+    "LONGTEXT": "text",
     "CLOB": "text",
     "CHARACTER": "text",
     "VARCHAR": "text",
@@ -41,12 +45,17 @@ _TYPE_MAP: dict[str, str] = {
     "VARYING CHARACTER": "text",
     "NATIVE CHARACTER": "text",
     "STRING": "text",
+    "ENUM": "text",
+    "SET": "text",
     # Boolean
     "BOOLEAN": "boolean",
     "BOOL": "boolean",
     "BIT": "boolean",
     # Blob / binary
     "BLOB": "blob",
+    "TINYBLOB": "blob",
+    "MEDIUMBLOB": "blob",
+    "LONGBLOB": "blob",
     "BINARY": "blob",
     "VARBINARY": "blob",
     # Temporal
@@ -76,7 +85,12 @@ def normalize_sql_type(raw: str) -> str:
     if not raw or not raw.strip():
         return "unknown"
 
-    cleaned = _SUFFIX_RE.sub("", raw.strip()).upper()
+    # Strip SQLAlchemy's NullType representation
+    stripped = raw.strip()
+    if stripped.upper() in ("NULL", "NULLTYPE"):
+        return "unknown"
+
+    cleaned = _SUFFIX_RE.sub("", stripped).upper()
 
     # Direct lookup
     if cleaned in _TYPE_MAP:
@@ -87,7 +101,9 @@ def normalize_sql_type(raw: str) -> str:
         if cleaned.startswith(key):
             return canonical
 
-    return "unknown"
+    # Return the cleaned type name itself rather than a generic "unknown"
+    # so the diagram shows e.g. "geometry" instead of "unknown"
+    return cleaned.lower() if cleaned else "unknown"
 
 
 def is_likely_date_type(raw: str) -> bool:

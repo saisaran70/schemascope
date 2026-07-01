@@ -113,7 +113,7 @@ def _process_table(
         fields.append(
             FieldInfo(
                 name=col_name,
-                data_type=normalize_sql_type(str(col.get("type", ""))),
+                data_type=_resolve_type(col.get("type")),
                 nullable=bool(col.get("nullable", True)),
                 primary_key=is_pk,
                 unique=is_pk or col_name in unique_single,
@@ -187,7 +187,7 @@ def _process_view(inspector: Inspector, view_name: str) -> EntityInfo:
         fields=[
             FieldInfo(
                 name=col["name"],
-                data_type=normalize_sql_type(str(col.get("type", ""))),
+                data_type=_resolve_type(col.get("type")),
                 nullable=bool(col.get("nullable", True)),
             )
             for col in columns
@@ -198,6 +198,48 @@ def _process_view(inspector: Inspector, view_name: str) -> EntityInfo:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _resolve_type(type_obj: Any) -> str:
+    """Convert a SQLAlchemy type object to a canonical type name.
+
+    Uses str() first (returns e.g. "VARCHAR(255)", "LONGTEXT()"), then falls
+    back to the Python class name (e.g. "INTEGER", "LONGTEXT") when str()
+    produces an unrecognised result.
+    """
+    import json, os
+
+    if type_obj is None:
+        return "unknown"
+
+    raw_str = str(type_obj)
+    class_name = type(type_obj).__name__
+
+    # Primary: str() gives SQL DDL e.g. "VARCHAR(255)"
+    canonical = normalize_sql_type(raw_str)
+    if canonical != "unknown":
+        return canonical
+
+    # Fallback: Python class name e.g. "LONGTEXT", "ENUM", "INTEGER"
+    canonical = normalize_sql_type(class_name)
+
+    # Always log any remaining unknowns to a file so we can inspect them
+    if canonical == "unknown":
+        log_path = os.path.join(os.path.dirname(__file__), "..", "debug_unknown_types.json")
+        try:
+            existing: list = []
+            if os.path.exists(log_path):
+                with open(log_path) as fh:
+                    existing = json.load(fh)
+            entry = {"str": raw_str, "repr": repr(type_obj), "class": class_name}
+            if entry not in existing:
+                existing.append(entry)
+                with open(log_path, "w") as fh:
+                    json.dump(existing, fh, indent=2)
+        except Exception:
+            pass
+
+    return canonical
+
 
 def _coerce_default(value: Any) -> str | None:
     if value is None:

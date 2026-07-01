@@ -43,8 +43,14 @@ export default function App() {
     setResult(r);
     setSessionId(sid);
     setActiveTab("explorer");
-    // Persist so the next page load auto-restores without re-analysing.
     localStorage.setItem(CACHE_KEY, JSON.stringify({ result: r }));
+  }
+
+  function handleClearAndReanalyse() {
+    localStorage.removeItem(CACHE_KEY);
+    setResult(null);
+    setSessionId(null);
+    setActiveTab("connect");
   }
 
   function handleUpdateFindings(findings: Finding[]) {
@@ -78,6 +84,9 @@ export default function App() {
               <Button variant="outline" size="sm" onClick={() => handleExport(() => downloadMarkdown(sessionId!))}>Markdown</Button>
               <Button variant="outline" size="sm" onClick={() => handleExport(() => downloadJSON(sessionId!))}>JSON</Button>
               <Button variant="outline" size="sm" onClick={() => handleExport(() => downloadMermaid(sessionId!))}>Mermaid</Button>
+              <Button variant="outline" size="sm" onClick={handleClearAndReanalyse} className="text-orange-600 border-orange-300 hover:bg-orange-50">
+                Re-analyse
+              </Button>
             </div>
           )}
         </div>
