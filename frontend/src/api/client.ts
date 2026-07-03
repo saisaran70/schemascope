@@ -28,6 +28,14 @@ export async function connectSQLite(file: File): Promise<ConnectResponse> {
   return res.json();
 }
 
+export async function connectSQLDump(file: File): Promise<ConnectResponse> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${BASE}/connect/sqldump`, { method: "POST", body: form });
+  await checkResponse(res);
+  return res.json();
+}
+
 export async function connectMySQL(params: MySQLParams): Promise<ConnectResponse> {
   const res = await fetch(`${BASE}/connect/mysql`, {
     method: "POST",

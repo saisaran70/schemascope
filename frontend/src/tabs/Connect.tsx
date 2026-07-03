@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { connectSQLite, connectMySQL, analyzeDb } from "@/api/client";
+import { connectSQLite, connectMySQL, connectSQLDump, analyzeDb } from "@/api/client";
 import type { AnalysisResult, MySQLParams } from "@/types/schema";
 
-type DbType = "sqlite" | "mysql";
+type DbType = "sqlite" | "mysql" | "sqldump";
 type Status = "idle" | "connecting" | "connected" | "analyzing" | "done" | "error";
 
 interface ConnectTabProps {
@@ -27,7 +27,7 @@ export function ConnectTab({ onAnalysisComplete }: ConnectTabProps) {
   const [password, setPassword] = useState("");
   const [port, setPort] = useState("3306");
 
-  // SQLite: auto-connect as soon as a file is chosen — no extra button click needed.
+  // File-based connections: auto-connect as soon as a file is chosen.
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const selected = e.target.files?.[0];
     if (!selected) return;
@@ -35,7 +35,9 @@ export function ConnectTab({ onAnalysisComplete }: ConnectTabProps) {
     setError("");
     setStatus("connecting");
     try {
-      const resp = await connectSQLite(selected);
+      const resp = dbType === "sqldump"
+        ? await connectSQLDump(selected)
+        : await connectSQLite(selected);
       setSessionId(resp.session_id);
       setConnectedName(resp.source_name);
       setStatus("connected");
@@ -97,20 +99,55 @@ export function ConnectTab({ onAnalysisComplete }: ConnectTabProps) {
 
       {/* DB type toggle */}
       <div className="flex gap-2">
-        {(["sqlite", "mysql"] as DbType[]).map((t) => (
+        {([
+          { id: "sqldump", label: "SQL Dump (.sql)" },
+          { id: "sqlite",  label: "SQLite (.db)" },
+          { id: "mysql",   label: "MySQL / Workbench" },
+        ] as { id: DbType; label: string }[]).map((t) => (
           <button
-            key={t}
-            onClick={() => { setDbType(t); handleReset(); }}
+            key={t.id}
+            onClick={() => { setDbType(t.id); handleReset(); }}
             className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors ${
-              dbType === t
+              dbType === t.id
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-background border-input hover:bg-accent"
             }`}
           >
-            {t === "sqlite" ? "SQLite" : "MySQL / Workbench"}
+            {t.label}
           </button>
         ))}
       </div>
+
+      {/* SQL Dump: file picker — parses CREATE TABLE DDL, no live DB needed */}
+      {dbType === "sqldump" && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">SQL Dump File</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="sql-file">
+                Choose a MySQL dump file (.sql) — schema is parsed automatically
+              </Label>
+              <Input
+                id="sql-file"
+                type="file"
+                accept=".sql"
+                onChange={handleFileChange}
+                disabled={status === "connecting" || isConnected}
+              />
+            </div>
+            {status === "connecting" && (
+              <p className="text-sm text-muted-foreground">Parsing SQL dump…</p>
+            )}
+            {isConnected && (
+              <p className="text-sm text-green-700">
+                ✓ Parsed <strong>{connectedName}</strong>
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* SQLite: file picker — connecting happens automatically on file select */}
       {dbType === "sqlite" && (

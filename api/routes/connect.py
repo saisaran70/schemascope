@@ -10,9 +10,11 @@ from pydantic import BaseModel
 import api.session_store as store
 from connectors.mysql_connector import MySQLConnector
 from connectors.sqlite_connector import SQLiteConnector
+from connectors.sql_dump_connector import parse_sql_dump
 from models.schema_models import (
     AnalysisResult, EntityInfo, FieldInfo, Finding, RelationshipInfo,
 )
+from rules.sql_rules import run_all_sql_rules
 from utils.errors import SchemaError
 
 router = APIRouter(tags=["connect"])
@@ -86,6 +88,34 @@ def connect_mysql(params: MySQLParams):
         source_name=params.database,
         source_type="mysql",
         message="Connected successfully.",
+    )
+
+
+@router.post("/connect/sqldump", response_model=ConnectResponse)
+async def connect_sqldump(file: UploadFile = File(...)):
+    content_bytes = await file.read()
+    if not content_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    filename = file.filename or "upload.sql"
+    try:
+        content = content_bytes.decode("utf-8", errors="replace")
+        result = parse_sql_dump(content, source_name=filename)
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Could not parse SQL dump: {exc}")
+    if not result.entities:
+        raise HTTPException(
+            status_code=422,
+            detail="No CREATE TABLE statements found. Make sure this is a valid MySQL dump file.",
+        )
+    run_all_sql_rules(result)
+    session_id = str(uuid.uuid4())
+    session = store.create(session_id, filename, "sqldump")
+    session.result = result
+    return ConnectResponse(
+        session_id=session_id,
+        source_name=filename,
+        source_type="sqldump",
+        message=f"Parsed {len(result.entities)} tables from SQL dump.",
     )
 
 

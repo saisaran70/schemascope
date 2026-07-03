@@ -17,6 +17,10 @@ def run_analysis(x_session_id: str = Header(..., alias="x-session-id")):
     session = store.get(x_session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Session not found. Please connect first.")
+    # SQL dump sessions pre-compute the result at connect time — return it directly.
+    if session.connector is None and session.result is not None:
+        return export_json_dict(session.result)
+
     if not session.connector:
         raise HTTPException(status_code=400, detail="No active connector in session.")
     try:
