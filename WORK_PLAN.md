@@ -1,215 +1,329 @@
-# SchemaScope Work Plan
+# SchemaScope Public Build Plan
 
-## Goal
+## Current State
 
-Build SchemaScope into a public web app that helps people understand database schemas, generate ER diagrams, identify design issues, and improve their data models.
+SchemaScope is no longer an empty project. The merged codebase already contains:
 
-## Public MVP
+- A FastAPI backend in `api/`.
+- A Vite + React frontend in `frontend/`.
+- Connectors for SQLite, MySQL, and SQL dump uploads.
+- SQL schema analysis logic.
+- Rule-based recommendations.
+- Mermaid ER diagram generation.
+- Markdown, JSON, and Mermaid exports.
+- A test suite under `tests/`.
+- Supporting docs under `docs/`.
+- A Windows helper script, `start.bat`, that starts backend and frontend together.
+- A SQL type normalization debug script, `debug_types.py`.
 
-The first public version should focus on one clear workflow:
+The plan should now focus on making the existing app reliable, easy to run, easy to demo, and safe enough for public users.
 
-1. User uploads or pastes SQL schema text.
-2. SchemaScope parses tables, columns, primary keys, foreign keys, and relationships.
-3. The app generates an ER diagram.
-4. The app explains the schema in plain language.
-5. The app highlights improvement opportunities.
-6. User can export or copy the results.
+## Product Direction
 
-## Priority 1: Product Definition
+Build SchemaScope as a public, read-only schema understanding tool.
 
-Before writing core application code, define exactly what the first version will and will not do.
-
-- Confirm the first supported input format: SQL DDL files and pasted SQL text.
-- Define the target user: students, developers, analysts, data engineers, or database designers.
-- Decide the first supported SQL dialects: start with PostgreSQL-style SQL, then expand later.
-- Define the main output types: ER diagram, schema summary, issues, and suggestions.
-- Decide whether uploaded schemas are stored or processed temporarily only.
-
-## Priority 2: Project Foundation
-
-Set up a clean structure that can grow without becoming messy.
-
-- Create a backend API.
-- Create a frontend app.
-- Add a parser module for turning SQL into structured schema data.
-- Add a diagram generation module.
-- Add tests for parser behavior.
-- Add project documentation and local setup instructions.
-- Add sample schemas for testing and demos.
-
-Suggested structure:
+The first public release should support this workflow:
 
 ```text
-schemascope/
-  backend/
-    app/
-      main.py
-      parser/
-      analyzer/
-      diagram/
-      models/
-    tests/
-  frontend/
-  examples/
-  docs/
+Connect or upload schema
+-> Analyze database structure
+-> Explore tables and fields
+-> View ER diagram
+-> Review recommendations
+-> Export Markdown, JSON, or Mermaid
 ```
 
-## Priority 3: SQL Schema Parser
+The product promise:
 
-This is the heart of the MVP.
+> Turn an unfamiliar database schema into a clear diagram, useful documentation, and practical improvement suggestions.
 
-- Parse `CREATE TABLE` statements.
-- Extract table names.
-- Extract column names and data types.
-- Detect primary keys.
-- Detect foreign keys.
-- Detect nullable and unique columns where possible.
-- Return clean JSON that the frontend can display.
-- Handle invalid SQL with useful error messages.
+## Priority 1: Stabilize The Existing Codebase
 
-Success criteria:
+Before adding new features, make the current app reproducible.
 
-- A sample SQL file can be uploaded or pasted.
-- The backend returns a structured list of tables, columns, and relationships.
-- Parser behavior is covered by tests.
+- Add a backend dependency file, such as `requirements.txt` or `pyproject.toml`.
+- Include all currently required packages:
+  - `fastapi`
+  - `uvicorn`
+  - `sqlalchemy`
+  - `pymysql`
+  - `pytest`
+  - any other package imported by the backend or tests
+- Verify `python -m pytest` runs from a clean setup.
+- Remove generated local files from the repo if present, such as `__pycache__` and `.pytest_cache`.
+- Confirm the backend starts with one documented command.
+- Confirm the frontend starts with one documented command.
+- Verify `start.bat` works on a clean Windows setup after dependencies are installed.
+- Decide whether `debug_types.py` should remain as a documented developer utility or move under a `scripts/` folder.
+- Confirm frontend API URLs work consistently in local development.
 
-## Priority 4: ER Diagram Generation
+Exit condition:
 
-Once schema data exists, make it visible.
+- A new developer can clone the repo, install dependencies, run tests, start backend, and start frontend.
 
-- Convert parsed schema JSON into a diagram-friendly format.
-- Start with Mermaid ER diagram output for speed.
-- Show entities, columns, and relationships.
-- Support copy/export of Mermaid text.
-- Later, add an interactive visual diagram with pan, zoom, and selection.
+## Priority 2: Rewrite The README For Public Users
 
-Success criteria:
+The current README is too small for a public project.
 
-- A parsed schema produces a readable ER diagram.
-- Relationships are visible and correctly labeled.
+Add:
 
-## Priority 5: Schema Analysis
+- What SchemaScope does.
+- Screenshots or GIF placeholders.
+- Supported inputs:
+  - SQLite database files
+  - MySQL connection
+  - MySQL SQL dump upload
+- What outputs are produced:
+  - schema explorer
+  - ER diagram
+  - recommendations
+  - Markdown export
+  - JSON export
+  - Mermaid export
+- Local setup instructions.
+- Backend run command.
+- Frontend run command.
+- Windows quick-start command using `start.bat`.
+- Test command.
+- Safety note: SchemaScope is designed to inspect, not modify.
+- Privacy note: schema names may be sensitive.
+- Known limitations.
+- Roadmap.
 
-Add useful feedback beyond visualization.
+Exit condition:
 
-- Detect tables without primary keys.
-- Detect foreign key columns without declared constraints.
-- Detect suspicious duplicate column patterns.
-- Detect overly generic table or column names.
-- Detect missing indexes for likely foreign keys.
-- Detect nullable columns that may need review.
-- Provide plain-language improvement suggestions.
+- Someone visiting GitHub can understand and run the app without asking for help.
 
-Success criteria:
+## Priority 3: Confirm The MVP Scope
 
-- The app produces a concise report with actionable findings.
-- Each finding explains why it matters.
+Because the repo already has multiple connectors, define what is officially supported for the first public release.
 
-## Priority 6: Web Interface
+Public MVP should include:
 
-Build the actual public-facing experience.
+- SQL dump upload as the easiest demo path.
+- SQLite support if the existing connector works end to end.
+- MySQL support as read-only connection support.
+- Schema explorer.
+- Mermaid ER diagram.
+- Rule-based recommendations.
+- Export to Markdown, JSON, and Mermaid.
 
-- Create a focused single-page workflow.
-- Add SQL paste area.
-- Add file upload for `.sql`.
-- Show parser results.
-- Show ER diagram.
-- Show analysis report.
-- Add loading, empty, and error states.
-- Add sample schema button for first-time users.
+Defer for now:
 
-Success criteria:
+- MongoDB support.
+- Authentication.
+- Saved cloud projects.
+- Team collaboration.
+- AI-generated recommendations.
+- Automatic schema changes.
+- Production database monitoring.
 
-- A user can try SchemaScope without reading instructions.
-- The first screen is the working tool, not a marketing page.
+Exit condition:
 
-## Priority 7: Export And Sharing
+- Public docs and UI match the features that actually work.
 
-Make results portable.
+## Priority 4: Verify The Core User Flow
 
-- Copy schema summary.
-- Copy Mermaid diagram.
-- Download analysis report as Markdown.
-- Download parsed schema as JSON.
-- Later, add PNG/PDF diagram export.
-- Later, add shareable private links.
+Create a repeatable manual test using sample schemas.
 
-Success criteria:
+Required sample files:
 
-- Users can take the output into docs, tickets, or presentations.
+- Small SQL dump with 3 to 5 related tables.
+- Larger SQL dump that exercises diagram filtering.
+- SQLite database fixture if SQLite is public MVP.
+- MySQL fixture instructions if live MySQL is tested manually.
 
-## Priority 8: Public Readiness
+Manual acceptance flow:
 
-Prepare the project for real users.
+1. Start backend.
+2. Start frontend.
+3. Upload SQL dump.
+4. Run analysis.
+5. Confirm tables and fields appear.
+6. Confirm ER diagram renders.
+7. Confirm recommendations appear.
+8. Export Markdown.
+9. Export JSON.
+10. Export Mermaid.
+11. Start over and analyze another file.
 
-- Improve README with screenshots, setup, examples, and roadmap.
-- Add license.
-- Add privacy note for uploaded schema data.
-- Add contribution guidelines.
-- Add basic issue templates.
-- Add deployment instructions.
-- Add demo data.
-- Add clear limits for unsupported SQL features.
+Exit condition:
 
-Success criteria:
+- The full flow works without developer intervention.
 
-- A stranger can understand, run, and try the project from GitHub.
+## Priority 5: Strengthen Safety And Privacy
 
-## Priority 9: Deployment
+Public users need confidence that SchemaScope is safe.
 
-Get the MVP online.
+- Make read-only behavior explicit in README and UI.
+- Ensure generated SQL suggestions are copy-only and never executed.
+- Mask passwords and sensitive connection strings.
+- Avoid logging raw credentials.
+- Avoid exporting credentials.
+- Add request size limits for uploaded SQL dumps.
+- Add clear warnings that table and column names may still be sensitive.
+- Document that users should prefer read-only database accounts.
 
-- Deploy frontend.
-- Deploy backend API.
-- Configure environment variables.
-- Add simple health check endpoint.
-- Add request size limits.
-- Add basic logging.
-- Add CORS configuration.
+Exit condition:
 
-Suggested early deployment path:
+- No credentials are exposed in UI, logs, exports, or test snapshots.
 
-- Frontend: Vercel or Netlify.
-- Backend: Render, Railway, Fly.io, or a small VPS.
+## Priority 6: Improve Error Handling
 
-Success criteria:
+Public apps need useful failures.
 
-- A public URL exists and can process a sample schema end to end.
+- Convert raw backend exceptions into user-friendly API errors.
+- Show frontend error states for:
+  - invalid SQL dump
+  - unsupported file type
+  - MySQL connection failure
+  - missing backend
+  - export failure
+  - empty schema
+- Keep technical details available for debugging where useful.
+- Add tests for common error cases.
 
-## Priority 10: Later Enhancements
+Exit condition:
 
-After the MVP is working, expand carefully.
+- A failed analysis explains what the user can try next.
 
-- Support MySQL, SQLite, SQL Server, and Oracle dialects.
-- Add database connection import.
-- Add ER diagram image upload.
-- Add AI-powered schema explanation.
-- Add schema version comparison.
-- Add normalization checks.
-- Add index recommendations.
-- Add team workspaces.
-- Add saved projects.
-- Add authentication.
-- Add role-based access control for teams.
+## Priority 7: Test Coverage
+
+Keep tests focused on public behavior and safety.
+
+Backend tests:
+
+- SQL dump parsing.
+- SQLite connector if supported.
+- MySQL connector behavior with mocked connection where practical.
+- Schema model serialization.
+- Mermaid generation.
+- Recommendation rules.
+- Exporters.
+- API routes.
+- Session restore.
+- Secret masking.
+
+Frontend checks:
+
+- Build succeeds with `npm run build`.
+- Main tabs render.
+- Upload/connect form handles errors.
+- Export buttons call expected API paths.
+
+Exit condition:
+
+- Backend tests pass.
+- Frontend build passes.
+- Known test gaps are documented.
+
+## Priority 8: Polish The Web Interface
+
+The first screen should be the usable tool.
+
+Improve:
+
+- Connect tab clarity.
+- SQL dump upload path.
+- Empty state before analysis.
+- Loading state during analysis.
+- Start-over flow.
+- Diagram filtering for large schemas.
+- Recommendation severity display.
+- Export button feedback.
+- Mobile layout.
+
+Avoid:
+
+- Marketing-only landing pages.
+- Hidden instructions that users need before trying the app.
+- UI text that promises unsupported features.
+
+Exit condition:
+
+- A first-time user can complete the SQL dump flow without reading docs.
+
+## Priority 9: Deployment Preparation
+
+Prepare for hosting, even if the first public release is local-only.
+
+- Add environment variable configuration for API base URL.
+- Add production CORS configuration.
+- Add health check documentation for `/api/health`.
+- Add backend start command for deployment.
+- Add frontend build instructions.
+- Decide whether deployment is:
+  - single combined service
+  - separate frontend and backend
+- Add deployment notes for Render, Railway, Fly.io, Vercel, or Netlify.
+
+Exit condition:
+
+- The project can be deployed without changing source code.
+
+## Priority 10: Public Release Checklist
+
+Before announcing or sharing broadly:
+
+- README is complete.
+- Work plan is current.
+- License is added.
+- Dependencies are documented.
+- Tests pass.
+- Frontend builds.
+- Sample schema exists.
+- Public MVP features are listed accurately.
+- Known limitations are listed.
+- Safety and privacy notes are visible.
+- GitHub issues are enabled.
+- Optional: add screenshots.
+
+Exit condition:
+
+- The repo is understandable, runnable, and demoable by someone outside the project.
 
 ## Recommended Build Order
 
-1. Create backend skeleton.
-2. Add SQL parser.
-3. Add parser tests.
-4. Add example SQL schemas.
-5. Add analysis rules.
-6. Add Mermaid diagram generation.
-7. Create frontend tool interface.
-8. Connect frontend to backend.
-9. Add export options.
-10. Improve README and public docs.
-11. Deploy MVP.
+1. Add backend dependency file.
+2. Clean generated cache files.
+3. Verify or revise `start.bat` for Windows local startup.
+4. Decide where developer scripts like `debug_types.py` should live.
+5. Make backend tests pass.
+6. Make frontend build pass.
+7. Add sample SQL dump.
+8. Rewrite README.
+9. Verify upload -> analyze -> diagram -> recommendations -> export flow.
+10. Improve API and UI error states.
+11. Add safety and privacy checks.
+12. Add deployment configuration notes.
+13. Tag the first public MVP release.
 
-## First Milestone
+## First Public Milestone
 
 The first milestone should be:
 
-> Paste SQL into SchemaScope and receive parsed tables, relationships, an ER diagram, and a short improvement report.
+> A user can upload a SQL dump, view parsed tables, see an ER diagram, review recommendations, and export Markdown, JSON, and Mermaid from the browser.
 
-This gives the project a complete and useful loop before adding accounts, storage, payments, or advanced AI features.
+This uses the strongest existing path in the current codebase and gives SchemaScope a complete public demo quickly.
+
+## Later Roadmap
+
+After the public MVP is stable:
+
+- Improve SQLite support and examples.
+- Harden MySQL live connection support.
+- Add PostgreSQL support.
+- Add schema comparison.
+- Add saved local projects.
+- Add richer diagram controls.
+- Add PNG or PDF export.
+- Add optional AI explanation layer.
+- Add authentication only if cloud persistence becomes necessary.
+
+## Non-Negotiables
+
+- SchemaScope must not modify source databases.
+- Recommendations are advisory, not automatic.
+- Credentials must never appear in exports.
+- Public documentation must match actual behavior.
+- New features should not outrun tests.
