@@ -101,6 +101,14 @@ export default function App() {
         {restoring && (
           <p className="text-sm text-muted-foreground mb-4">Restoring last session…</p>
         )}
+        {!restoring && result && (
+          <div className="mb-4 flex items-center gap-3 rounded-md bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-800">
+            <span>Showing a previous analysis. To load a new file, click</span>
+            <Button size="sm" variant="outline" className="border-amber-400 text-amber-800 hover:bg-amber-100 h-7 px-2 py-0" onClick={handleClearAndReanalyse}>
+              Start Over
+            </Button>
+          </div>
+        )}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList>
             <TabsTrigger value="connect">Connect</TabsTrigger>

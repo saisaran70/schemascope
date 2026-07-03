@@ -10,7 +10,6 @@ import re
 from datetime import datetime, timezone
 
 from models.schema_models import AnalysisResult, EntityInfo, FieldInfo
-from utils.type_normalization import normalize_sql_type
 
 # Match each CREATE TABLE `name` (...) ENGINE=... block
 _TABLE_BLOCK_RE = re.compile(
@@ -22,18 +21,21 @@ _TABLE_BLOCK_RE = re.compile(
 _COL_RE = re.compile(r'^\s*`(\w+)`\s+(.+)$', re.IGNORECASE)
 
 
-def _extract_type(rest: str) -> str:
-    """Pull the SQL type token out of the remainder of a column definition.
+def _extract_mysql_type(rest: str) -> str:
+    """Return the MySQL base type name in lowercase for display in the ER diagram.
 
-    Handles ENUM/SET (parenthesised value lists), VARCHAR(n), DECIMAL(n,m),
-    INT UNSIGNED, TINYINT(1), etc.
+    Examples:
+        "VARCHAR(255) NULL"      → "varchar"
+        "INT UNSIGNED AUTO_INC"  → "int"
+        "TINYINT(1) NULL"        → "tinyint"
+        "DECIMAL(10,2) NULL"     → "decimal"
+        "ENUM('A','B') NULL"     → "enum"
+        "DATETIME NULL"          → "datetime"
+        "JSON NULL"              → "json"
     """
-    upper = rest.lstrip().upper()
-    if upper.startswith('ENUM') or upper.startswith('SET'):
-        end = rest.find(')')
-        return rest[:end + 1] if end != -1 else rest.split()[0]
-    m = re.match(r'(\w+(?:\([^)]*\))?(?:\s+UNSIGNED)?)', rest, re.IGNORECASE)
-    return m.group(1) if m else rest.split()[0]
+    # Strip everything from '(' onward to get the bare type name
+    base = rest.split('(')[0].strip().split()[0]
+    return base.lower() if base else 'unknown'
 
 
 def parse_sql_dump(content: str, source_name: str = "dump.sql") -> AnalysisResult:
@@ -63,13 +65,12 @@ def parse_sql_dump(content: str, source_name: str = "dump.sql") -> AnalysisResul
             rest = col_m.group(2).strip()
             rest_upper = rest.upper()
 
-            raw_type = _extract_type(rest)
             is_pk = 'AUTO_INCREMENT' in rest_upper or col_name == '_id'
             nullable = 'NOT NULL' not in rest_upper
 
             fields.append(FieldInfo(
                 name=col_name,
-                data_type=normalize_sql_type(raw_type),
+                data_type=_extract_mysql_type(rest),
                 nullable=nullable,
                 primary_key=is_pk,
                 unique=is_pk,
